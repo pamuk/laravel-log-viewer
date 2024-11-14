@@ -368,5 +368,12 @@ class LaravelLogViewer
         return;
     }
 
+    /**
+     * @return Level
+     */
+    public function getLevel()
+    {
+        return $this->level;
+    }
 
 }

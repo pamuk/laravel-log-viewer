@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta name="robots" content="noindex, nofollow">
-  <title>Laravel log viewer</title>
+  <title>Logs - {{ URL::to('') }}</title>
   <link rel="stylesheet"
         href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
         integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
@@ -66,10 +66,6 @@
     .nowrap {
       white-space: nowrap;
     }
-    .list-group {
-            padding: 5px;
-        }
-
 
 
 
@@ -173,8 +169,9 @@
 <div class="container-fluid">
   <div class="row">
     <div class="col sidebar mb-3">
+      <a href="{{ URL::route('admin.home') }}"><img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="width: 200px; margin-bottom: 25px;"></a>
       <h1><i class="fa fa-calendar" aria-hidden="true"></i> Laravel Log Viewer</h1>
-      <p class="text-muted"><i>by Rap2h</i></p>
+      <p class="text-muted"><i>{{ URL::to('/') }}</i></p>
 
       <div class="custom-control custom-switch" style="padding-bottom:20px;">
         <input type="checkbox" class="custom-control-input" id="darkSwitch">
@@ -184,10 +181,19 @@
       <div class="list-group div-scroll">
         @foreach($folders as $folder)
           <div class="list-group-item">
-            <?php
-            \Rap2hpoutre\LaravelLogViewer\LaravelLogViewer::DirectoryTreeStructure( $storage_path, $structure );
-            ?>
-
+            <a href="?f={{ \Illuminate\Support\Facades\Crypt::encrypt($folder) }}">
+              <span class="fa fa-folder"></span> {{$folder}}
+            </a>
+            @if ($current_folder == $folder)
+              <div class="list-group folder">
+                @foreach($folder_files as $file)
+                  <a href="?l={{ \Illuminate\Support\Facades\Crypt::encrypt($file) }}&f={{ \Illuminate\Support\Facades\Crypt::encrypt($folder) }}"
+                    class="list-group-item @if ($current_file == $file) llv-active @endif">
+                    {{$file}}
+                  </a>
+                @endforeach
+              </div>
+            @endif
           </div>
         @endforeach
         @foreach($files as $file)
@@ -223,7 +229,7 @@
             <tr data-display="stack{{{$key}}}">
               @if ($standardFormat)
                 <td class="nowrap text-{{{$log['level_class']}}}">
-                  <span class="fa fa-{{{$log['level_img']}}}" aria-hidden="true"></span>&nbsp;&nbsp;{{$log['level']}}
+                  <span class="fa fa-{{{$log['level_img']}}}" aria-hidden="true"></span>{{$log['level']}}
                 </td>
                 <td class="text">{{$log['context']}}</td>
               @endif
@@ -310,11 +316,13 @@
   // end darkmode js
         
   $(document).ready(function () {
-    $('.table-container tr').on('click', function () {
+
+    $('.expand').on('click', function () {
       $('#' + $(this).data('display')).toggle();
     });
-    $('#table-log').DataTable({
-      "order": [$('#table-log').data('orderingIndex'), 'desc'],
+
+    var options = {
+      "order": [$("#table-log").data("orderingIndex"), "desc"],
       "stateSave": true,
       "stateSaveCallback": function (settings, data) {
         window.localStorage.setItem("datatable", JSON.stringify(data));
@@ -323,11 +331,48 @@
         var data = JSON.parse(window.localStorage.getItem("datatable"));
         if (data) data.start = 0;
         return data;
+      },
+    };
+
+    @if ($standardFormat)
+      options.dom = "<'row'<'col-sm-4'l><'level-select col-sm-4'><'col-sm-4'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>";
+    @endif
+
+    var table = $("#table-log").DataTable(options);
+
+    $("#delete-log, #clean-log, #delete-all-log").click(function () {
+      return confirm("Are you sure?");
+    });
+
+    {{-- Add a level select filter --}}
+    @if ($standardFormat)
+      var levels = @json($levels);
+
+      var logSelect = "<label>Level " +
+        "<select id=\"level\" class=\"form-control form-control-sm\">" +
+        "<option value=\"\">all</option>";
+
+      for (var i = 0; i < levels.length; i++) {
+        logSelect += "<option value=\"" + levels[i] + "\">" + levels[i] + "</option>";
       }
-    });
-    $('#delete-log, #clean-log, #delete-all-log').click(function () {
-      return confirm('Are you sure?');
-    });
+
+      logSelect += "</select></label>";
+
+      $("div.level-select").html(logSelect);
+
+      // Redraw the table whenever the level select changes
+      $("#level").change(function () {
+        table.draw();
+      });
+
+      $.fn.dataTable.ext.search.push(
+        function (settings, data) {
+          var level = $("#level").val();
+
+          return !level || data[0] === level;
+        },
+      );
+    @endif
   });
 </script>
 </body>

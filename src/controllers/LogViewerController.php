@@ -69,7 +69,7 @@ class LogViewerController extends BaseController
             'standardFormat' => true,
             'structure' => $this->log_viewer->foldersAndFiles(),
             'storage_path' => $this->log_viewer->getStoragePath(),
-
+            'levels' => $this->log_viewer->getLevel()->all()
         ];
 
         if ($this->request->wantsJson()) {
